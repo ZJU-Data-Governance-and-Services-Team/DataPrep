@@ -14,7 +14,7 @@ conda activate dataprep
 
 ### 2. Clone the Repository
 ```bash
-git clone [https://github.com/missanchor/DataPrep.git](https://github.com/missanchor/DataPrep.git)
+git clone [https://github.com/ZJU-Data-Governance-and-Services-Team/DataPrep.git](https://github.com/ZJU-Data-Governance-and-Services-Team/DataPrep.git)
 cd DataPrep
 ```
 

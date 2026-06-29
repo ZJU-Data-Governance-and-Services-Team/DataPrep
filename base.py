@@ -1,5 +1,21 @@
 from abc import ABC, abstractmethod
-import joblib  # 或者使⽤ pickle/cloudpickle
+try:
+    import joblib  # 或者使⽤ pickle/cloudpickle
+except ModuleNotFoundError:
+    import pickle
+
+    class _PickleJoblibFallback:
+        @staticmethod
+        def dump(obj, path):
+            with open(path, "wb") as f:
+                pickle.dump(obj, f)
+
+        @staticmethod
+        def load(path):
+            with open(path, "rb") as f:
+                return pickle.load(f)
+
+    joblib = _PickleJoblibFallback()
 import tempfile
 import shutil
 import os
@@ -76,4 +92,3 @@ class BaseEstimator(ABC):
             shutil.rmtree(self.temp_dir)
             print(f"[System] Cleaned up temporary directory: {self.temp_dir}")
             self.temp_dir = None
-

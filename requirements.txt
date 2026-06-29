@@ -9,3 +9,16 @@ openpyxl
 pandas
 scikit_learn
 sentence_transformers==2.7.0
+joblib
+numpy
+scipy
+torch
+tqdm
+pyro-ppl
+python-Levenshtein
+openai
+requests
+transformers
+fasttext
+einops
+xgboost

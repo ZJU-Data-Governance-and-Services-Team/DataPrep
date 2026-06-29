@@ -1,4 +1,7 @@
-from dataprep.base import BaseEstimator
+try:
+    from dataprep.base import BaseEstimator
+except ModuleNotFoundError:
+    from base import BaseEstimator
 from abc import abstractmethod
 import pandas as pd
 import numpy as np
@@ -80,5 +83,4 @@ class BaseImputer(BaseEstimator):
 
         print(f"Evaluation Metrics (on missing part): RMSE={rmse:.4f}, MAE={mae:.4f}")
         return {'rmse': rmse, 'mae': mae}
-
 

@@ -31,7 +31,12 @@ pip install -r requirements.txt
 ## 🚀 Getting Started
 
 ### 1.Imputation
-This module recovers missing values in tabular data using advanced generative models (e.g., GAIN, VAEGAIN, SCIS).
+This module recovers missing values in tabular data using advanced generative models and strict paper-style imputation wrappers.
+
+Currently integrated imputation algorithms:
+- `GAIN`, `VAEGAIN`, `SCIS`
+- `EDIT`
+- `MISSTabular`, `MISSSaint`, `MISSTabFormer`, `MISSNPT`
 
 ### How to use:
 You need a dataset with missing values and a corresponding boolean mask (where 1 indicates observed values and 0 indicates missing values).
@@ -61,8 +66,33 @@ imputed_data = model.train_and_predict(data_missing, missing_mask)
 pd.DataFrame(imputed_data).to_csv('imputed_results.csv', index=False)
 ```
 
+MISS wrappers preserve the original MISS training contract. In addition to the table with missing values and the missing mask, they require a clean/full table through `full_data` for expert sampling and IPS.
+
+```python
+import pandas as pd
+from tabular.imputation.MISS_tabular import MISSTabular
+
+data_missing = pd.read_csv("path/to/missing.csv")
+data_full = pd.read_csv("path/to/full.csv")
+missing_mask = data_missing.notna().astype(int).values
+
+model = MISSTabular(epoch=10, device="cpu")
+imputed = model.train_and_predict(
+    data_missing,
+    missing_mask=missing_mask,
+    full_data=data_full,
+)
+```
+
 ### 2.Detection
-This module identifies dirty or anomalous cells within a dataset. It includes LLM-assisted zero-shot detection (ZeroED) alongside standard baselines like Isolation Forest and LOF.
+This module identifies dirty or anomalous cells within a dataset. It includes LLM-assisted zero-shot detection (ZeroED), repair-derived detectors, and rule/prompt-based detectors.
+
+Currently integrated detection algorithms:
+- `ZeroED`
+- `MLNClean`
+- `IterClean`
+- `Horizon`
+- `SCAREd`
 
 ### How to use:
 For LLM-based detection, you need to configure your API base and model name (e.g., qwen2.5-7b or gpt-3.5-turbo).
@@ -93,7 +123,15 @@ pd.DataFrame(error_mask).to_csv('generated_error_mask.csv', index=False)
 ```
 
 ### 3.Correction
-Once errors are detected, this module repairs the specific dirty cells. ZeroEC utilizes LLMs and local embeddings to smartly correct data based on context.
+Once errors are detected, this module repairs dirty cells. ZeroEC utilizes LLMs and local embeddings to smartly correct data based on context.
+
+Currently integrated correction algorithms:
+- `ZeroEC`
+- `MLNClean`
+- `IterClean`
+- `TORepair`
+- `Horizon`
+- `SCAREd`
 
 > ⚠️ **Prerequisite for ZeroEC:**
 > The embedding-based correction requires the `all-MiniLM-L6-v2` model.
@@ -131,6 +169,53 @@ cleaned_df = corrector.train_and_predict()
 # 3. Save Corrected Data
 cleaned_df.to_csv('final_corrected_data.csv')
 ```
+
+### 4.Cleaning
+This module runs end-to-end table cleaning pipelines that combine detection, labeling, format repair, FD repair, semantic repair, and LLM-assisted reasoning.
+
+Currently integrated cleaning algorithms:
+- `ProClean`
+
+### How to use:
+ProClean requires local FastText and semantic model resources, plus an OpenAI-compatible LLM endpoint.
+
+```python
+from tabular.cleaning.ProClean import ProClean
+
+cleaner = ProClean(
+    dataset="example",
+    dirty_path="path/to/dirty.csv",
+    clean_path="path/to/clean.csv",
+    result_root="results",
+    llm_base_url="http://localhost:8000/v1",
+    llm_api_key="EMPTY",
+    llm_model="qwen2.5-7b",
+    semantic_model_path="models/qwen-0.6B",
+    fasttext_model_path="models/cc.en.300.bin",
+)
+
+result = cleaner.run()
+```
+
+## Current Known Issues
+
+- **Backend dispatch is not yet wired for newly added algorithms.** The web console/backend route still needs explicit method registration for `EDIT`, `MISS-*`, `MLNClean`, `IterClean`, `TORepair`, `Horizon`, `SCAREd`, and cleaning algorithms such as `ProClean`.
+- **Package layout is still transitional.** The repository mixes `dataprep...` package-style imports with direct source-tree `tabular...` imports. Fallback imports were added for the newly integrated files, but a formal package layout should still be normalized.
+- **MISS algorithms require `full_data`.** This matches the original MISS-style supervised/expert-sampling flow, but it is not compatible with the old imputation API that only passes `data_missing` and `missing_mask`.
+- **MISS example scripts are not normalized yet.** The original `MISS-*-test.py` scripts depend on external `miss数据集/MISS/...` paths and were not copied into the main test suite as runnable tests.
+- **MLNClean requires rules and evidence data.** It expects MLN rules plus `evidence_df` or `evidence_path`; it also expects an `ID` column unless callers add one before invocation.
+- **TORepair still needs complete config/data wiring.** Direct DataFrame mode requires `detection_mask` and feature metadata; default dataset-config mode expects `data/{dataset}/data_config.json`.
+
+## TODO
+
+- Register all newly integrated algorithms in backend dispatch and the web console method list.
+- Standardize the Python package layout and remove the need for dual `dataprep...` / `tabular...` import fallbacks.
+- Add minimal runnable examples for `MISS-*`, `MLNClean`, `TORepair`, and `ProClean` using local sample data.
+- Add unit or smoke tests that do not require external datasets, API keys, or large model downloads.
+- Document required inputs for each new algorithm, especially `full_data`, `detection_mask`, `rules_path`, `evidence_path`, and `data_config`.
+- Decide whether repair-derived detection should be evaluated separately from independent detection methods.
+- Pin or split heavy optional dependencies by algorithm group to avoid forcing every user to install all models/toolchains.
+- Add CI checks for syntax, import smoke tests, and lightweight toy-data execution.
 
 ## 📊 Performance Comparison
 As demonstrated in the benchmark results below, DataPrep's advanced algorithms consistently outperform traditional `scikit-learn` baselines across most data governance scenarios.
